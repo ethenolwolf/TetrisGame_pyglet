@@ -113,7 +113,7 @@ class GameWindow(Window):
 
         self.player_start_pos = (4, 18)
         self.player_pos = [4, 18]
-        self.player_shape = random.randint(0, 6)
+        self.player_shape = list(SHAPES[random.randint(0, 6)])
         self.player_color = random.randint(1, 4)
 
         self.next_shape = random.randint(0, 6)
@@ -157,25 +157,38 @@ class GameWindow(Window):
             self.direct_down()
 
     def check_rotate(self):
-        pass
+        tmp_next = []
+        for pos in self.player_shape:
+            tmp_next.append((pos[1] * -1, pos[0] - 1))
+        can_rotate = True
+        for pos in tmp_next:
+            if (self.player_pos[0] + pos[0]) < 0 \
+                    or (self.player_pos[0] + pos[0]) > 9 \
+                    or (self.player_pos[1] + pos[1]) < 0 \
+                    or self.board[(self.player_pos[0] + pos[0]) +
+                                  (self.player_pos[1] + pos[1]) * 10] != 0:
+                can_rotate = False
+                break
+        if can_rotate:
+            self.player_shape = tmp_next
 
     def check_left(self):
         min_x = 10
-        for pos in SHAPES[self.player_shape]:
+        for pos in self.player_shape:
             min_x = min(min_x, pos[0] + self.player_pos[0])
         if min_x > 0:
             self.player_pos[0] -= 1
 
     def check_right(self):
         max_x = 0
-        for pos in SHAPES[self.player_shape]:
+        for pos in self.player_shape:
             max_x = max(max_x, pos[0] + self.player_pos[0])
         if max_x < 9:
             self.player_pos[0] += 1
 
     def check_down(self):
         hit = False
-        for pos in SHAPES[self.player_shape]:
+        for pos in self.player_shape:
             next_y = self.player_pos[1] + pos[1] - 1
             if next_y < 0:
                 hit = True
@@ -185,7 +198,7 @@ class GameWindow(Window):
         if not hit:
             self.player_pos[1] -= 1
         else:
-            for pos in SHAPES[self.player_shape]:
+            for pos in self.player_shape:
                 x = self.player_pos[0] + pos[0]
                 y = self.player_pos[1] + pos[1]
                 self.board[y * 10 + x] = self.player_color
@@ -199,14 +212,13 @@ class GameWindow(Window):
 
     def next_player(self):
         self.player_pos = list(self.player_start_pos)
-        self.player_shape = self.next_shape
+        self.player_shape = list(SHAPES[self.next_shape])
         self.player_color = self.next_color
         self.next_shape = random.randint(0, 6)
         self.next_color = random.randint(1, 4)
 
     def draw_player(self):
-        shape = SHAPES[self.player_shape]
-        for pos in shape:
+        for pos in self.player_shape:
             x = self.left + (self.player_pos[0] + pos[0] + 1) * self.block_size
             y = self.bottom + (self.player_pos[1] + pos[1] + 1) * self.block_size
             self.BLOCK_IMAGES[self.player_color].blit(x, y)
