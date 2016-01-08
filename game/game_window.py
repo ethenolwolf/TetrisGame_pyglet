@@ -219,10 +219,15 @@ class GameWindow(Window):
         if not hit:
             self.player_pos[1] -= 1
         else:
+            min_y = self.player_pos[1]
+            max_y = self.player_pos[1]
             for pos in self.player_shape:
                 x = self.player_pos[0] + pos[0]
                 y = self.player_pos[1] + pos[1]
                 self.board[y * 10 + x] = self.player_color
+                min_y = min(min_y, y)
+                max_y = max(max_y, y)
+            self.check_full_lines(min_y, max_y)
             self.next_player()
         self.state_time = self.count_down
         self.check_game_over()
@@ -231,6 +236,26 @@ class GameWindow(Window):
     def direct_down(self):
         while not self.check_down():
             pass
+
+    def check_full_lines(self, min_y, max_y):
+        full_lines = []
+        for y in range(min_y, max_y+1):
+            full_line = True
+            for x in range(10):
+                if self.board[x + y * 10] == 0:
+                    full_line = False
+                    break
+            if full_line:
+                full_lines.append(y)
+        full_lines.sort()
+        for num, line in enumerate(full_lines):
+            current_line = line - num
+            move_down = num + 1
+            for x in range(10):
+                self.board[x + current_line * 10] = 0
+            for y in range(current_line, 19):
+                for x in range(10):
+                    self.board[x + y * 10] = self.board[x + (y + 1) * 10]
 
     def next_player(self):
         self.player_pos = list(self.player_start_pos)
