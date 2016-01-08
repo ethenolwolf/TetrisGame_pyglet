@@ -125,6 +125,19 @@ class GameWindow(Window):
         self.game_over = False
         self.game_over_animation_count = 0
 
+        self.target_score = 0
+        self.score = 0
+        self.basic_score = 100
+        self.full_line_score = 1000
+        self.score_add_step = 10
+        self.score_label = pyglet.text.Label('Score: 0',
+                                             font_name='Monofonto',
+                                             font_size=22,
+                                             color=int_color(WHITE),
+                                             x=self.right+self.block_size*2,
+                                             y=self.bottom+self.block_size*22.5,
+                                             batch=self.batch)
+
     def update_board_info(self, width, height):
         self.width = width
         self.height = height
@@ -143,6 +156,10 @@ class GameWindow(Window):
         self.clock_display.draw()
 
     def update(self, delta):
+        if self.score < self.target_score:
+            self.score += self.score_add_step
+            self.score = min(self.score, self.target_score)
+            self.score_label.text = 'Score: {}'.format(self.score)
         if self.game_over:
             self.do_game_over_animation()
             return
@@ -227,6 +244,7 @@ class GameWindow(Window):
                 self.board[y * 10 + x] = self.player_color
                 min_y = min(min_y, y)
                 max_y = max(max_y, y)
+            self.target_score += self.basic_score
             self.check_full_lines(min_y, max_y)
             self.next_player()
         self.state_time = self.count_down
@@ -249,8 +267,8 @@ class GameWindow(Window):
                 full_lines.append(y)
         full_lines.sort()
         for num, line in enumerate(full_lines):
+            self.target_score += self.full_line_score
             current_line = line - num
-            move_down = num + 1
             for x in range(10):
                 self.board[x + current_line * 10] = 0
             for y in range(current_line, 19):
