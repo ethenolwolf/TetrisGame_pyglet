@@ -4,6 +4,7 @@ import pyglet
 from pyglet.gl import *
 from pyglet.image import ImagePattern, ImageData
 from pyglet.window import Window
+from pyglet.window import key
 
 pyglet.resource.path = ['resources']
 pyglet.resource.reindex()
@@ -20,6 +21,23 @@ DARK_GREY = (0.5, 0.5, 0.5, 1.0)  # color 6
 WHITE = (0.9, 0.9, 0.9, 1.0)      # color 7
 
 COLORS = [BLACK, RED, GREEN, BLUE, YELLOW, GREY, DARK_GREY, WHITE]
+
+# ''' SHAPE coordinate
+# -1, 1  0, 1  1, 1  2, 1
+# -1, 0  0, 0  1, 0  2, 0
+# -1,-1  0,-1  1,-1  2,-1
+# -1,-2  0,-2  1,-2  2,-2
+# '''
+
+SHAPES = [
+    ((-1, 0), (0, 0), (1, 0), (2, 0)),    # horizontal bar
+    ((0, 0), (1, 0), (0, -1), (1, -1)),   # square box
+    ((-1, 0), (0, 0), (1, 0), (0, -1)),   # T
+    ((0, 1), (0, 0), (0, -1), (1, -1)),   # L
+    ((1, 1), (1, 0), (1, -1), (0, -1)),   # reverse L
+    ((1, 1), (1, 0), (0, 0), (0, -1)),    # N
+    ((0, 1), (0, 0), (1, 0), (1, -1)),    # reverse N
+]
 
 
 def int_color(float_color):
@@ -93,6 +111,17 @@ class GameWindow(Window):
         pyglet.gl.glClearColor(*BLACK)
         self.make_background()
 
+        self.player_start_pos = (4, 18)
+        self.player_pos = [4, 18]
+        self.player_shape = random.randint(0, 6)
+        self.player_color = random.randint(1, 4)
+
+        self.next_shape = random.randint(0, 6)
+        self.next_color = random.randint(1, 4)
+
+        self.count_down = 2
+        self.state_time = self.count_down
+
     def update_board_info(self, width, height):
         self.width = width
         self.height = height
@@ -105,15 +134,93 @@ class GameWindow(Window):
     def on_draw(self):
         self.clear()
         self.draw_board()
+        self.draw_next_shape()
+        self.draw_player()
         self.batch.draw()
         self.clock_display.draw()
 
     def update(self, delta):
+        self.state_time -= delta
+        if self.state_time <= 0:
+            self.check_down()
+
+    def on_key_press(self, symbol, modifiers):
+        if symbol == key.LEFT:
+            self.check_left()
+        if symbol == key.RIGHT:
+            self.check_right()
+        if symbol == key.DOWN:
+            self.check_down()
+        if symbol == key.UP:
+            self.check_rotate()
+        if symbol == key.SPACE:
+            self.direct_down()
+
+    def check_rotate(self):
         pass
+
+    def check_left(self):
+        min_x = 10
+        for pos in SHAPES[self.player_shape]:
+            min_x = min(min_x, pos[0] + self.player_pos[0])
+        if min_x > 0:
+            self.player_pos[0] -= 1
+
+    def check_right(self):
+        max_x = 0
+        for pos in SHAPES[self.player_shape]:
+            max_x = max(max_x, pos[0] + self.player_pos[0])
+        if max_x < 9:
+            self.player_pos[0] += 1
+
+    def check_down(self):
+        hit = False
+        for pos in SHAPES[self.player_shape]:
+            next_y = self.player_pos[1] + pos[1] - 1
+            if next_y < 0:
+                hit = True
+            elif self.board[(self.player_pos[0]+pos[0]) + next_y*10] != 0:
+                hit = True
+
+        if not hit:
+            self.player_pos[1] -= 1
+        else:
+            for pos in SHAPES[self.player_shape]:
+                x = self.player_pos[0] + pos[0]
+                y = self.player_pos[1] + pos[1]
+                self.board[y * 10 + x] = self.player_color
+            self.next_player()
+        self.state_time = self.count_down
+        return hit
+
+    def direct_down(self):
+        while not self.check_down():
+            pass
+
+    def next_player(self):
+        self.player_pos = list(self.player_start_pos)
+        self.player_shape = self.next_shape
+        self.player_color = self.next_color
+        self.next_shape = random.randint(0, 6)
+        self.next_color = random.randint(1, 4)
+
+    def draw_player(self):
+        shape = SHAPES[self.player_shape]
+        for pos in shape:
+            x = self.left + (self.player_pos[0] + pos[0] + 1) * self.block_size
+            y = self.bottom + (self.player_pos[1] + pos[1] + 1) * self.block_size
+            self.BLOCK_IMAGES[self.player_color].blit(x, y)
+
+    def draw_next_shape(self):
+        left= self.right + self.block_size * 4
+        bottom = self.bottom + self.block_size * 20
+        for pos in SHAPES[self.next_shape]:
+            x = left + pos[0] * self.block_size
+            y = bottom + pos[1] * self.block_size
+            self.BLOCK_IMAGES[self.next_color].blit(x, y)
 
     def draw_board(self):
         size = self.block_size
-
         for i, v in enumerate(self.board):
             if v == 0:
                 continue
