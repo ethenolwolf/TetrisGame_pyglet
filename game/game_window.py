@@ -122,6 +122,9 @@ class GameWindow(Window):
         self.count_down = 2
         self.state_time = self.count_down
 
+        self.game_over = False
+        self.game_over_animation_count = 0
+
     def update_board_info(self, width, height):
         self.width = width
         self.height = height
@@ -140,11 +143,23 @@ class GameWindow(Window):
         self.clock_display.draw()
 
     def update(self, delta):
+        if self.game_over:
+            self.do_game_over_animation()
+            return
         self.state_time -= delta
         if self.state_time <= 0:
             self.check_down()
 
+    def do_game_over_animation(self):
+        if self.game_over_animation_count < 10 * 20:
+            for i in range(10):
+                if self.board[self.game_over_animation_count] != 0:
+                    self.board[self.game_over_animation_count] = 6  # dark grey
+                self.game_over_animation_count += 1
+
     def on_key_press(self, symbol, modifiers):
+        if self.game_over:
+            return
         if symbol == key.LEFT:
             self.check_left()
         if symbol == key.RIGHT:
@@ -155,6 +170,12 @@ class GameWindow(Window):
             self.check_rotate()
         if symbol == key.SPACE:
             self.direct_down()
+
+    def check_game_over(self):
+        for cell in self.board[-10:]:
+            if cell != 0:
+                self.game_over = True
+                break
 
     def check_rotate(self):
         tmp_next = []
@@ -204,6 +225,7 @@ class GameWindow(Window):
                 self.board[y * 10 + x] = self.player_color
             self.next_player()
         self.state_time = self.count_down
+        self.check_game_over()
         return hit
 
     def direct_down(self):
@@ -216,8 +238,18 @@ class GameWindow(Window):
         self.player_color = self.next_color
         self.next_shape = random.randint(0, 6)
         self.next_color = random.randint(1, 4)
+        for pos in self.player_shape:
+            pos_x = self.player_pos[0] + pos[0]
+            pos_y = self.player_pos[1] + pos[1]
+            if self.board[pos_x + pos_y * 10] != 0:
+                for new_pos in self.player_shape:
+                    self.board[(self.player_pos[0]+new_pos[0])+(self.player_pos[1]+new_pos[1])*10] = self.player_color
+                self.game_over = True
+                break
 
     def draw_player(self):
+        if self.game_over:
+            return
         for pos in self.player_shape:
             x = self.left + (self.player_pos[0] + pos[0] + 1) * self.block_size
             y = self.bottom + (self.player_pos[1] + pos[1] + 1) * self.block_size
