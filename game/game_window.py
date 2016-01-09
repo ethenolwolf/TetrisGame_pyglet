@@ -125,6 +125,11 @@ class GameWindow(Window):
         self.game_over = False
         self.game_over_animation_count = 0
 
+        self.player_control = True
+        self.full_lines = []
+        self.full_line_anim_x = 0
+        self.full_line_anim_y = 0
+
         self.high_score = 0
         self.target_score = 0
         self.score = 0
@@ -176,7 +181,13 @@ class GameWindow(Window):
         self.clear()
         self.draw_board()
         self.draw_next_shape()
-        self.draw_player()
+
+        if self.full_lines:
+            self.player_control = False
+            self.remove_full_line_animation()
+
+        if self.player_control:
+            self.draw_player()
         self.batch.draw()
         if self.show_game_over_label:
             self.game_over_label.draw()
@@ -188,12 +199,15 @@ class GameWindow(Window):
             self.score += self.score_add_step
             self.score = min(self.score, self.target_score)
             self.update_score_label()
+
         if self.score > self.high_score:
             self.high_score = self.score
             self.high_score_label.text = 'High Score: {}'.format(self.high_score)
+
         if self.game_over:
             self.do_game_over_animation()
             return
+
         self.state_time -= delta
         if self.state_time <= 0:
             self.check_down()
@@ -204,6 +218,7 @@ class GameWindow(Window):
     def restart(self):
         self.game_over = False
         self.show_game_over_label = False
+        self.player_control = True
         self.game_over_animation_count = 0
         if self.target_score > self.high_score:
             self.high_score = self.target_score
@@ -225,7 +240,7 @@ class GameWindow(Window):
             self.show_game_over_label = True
 
     def on_key_press(self, symbol, modifiers):
-        if not self.game_over:
+        if self.player_control:
             if symbol == key.LEFT:
                 self.check_left()
             if symbol == key.RIGHT:
@@ -236,6 +251,7 @@ class GameWindow(Window):
                 self.check_rotate()
             if symbol == key.SPACE:
                 self.direct_down()
+
         if symbol == key.ENTER:
             if self.game_over:
                 self.restart()
@@ -243,6 +259,8 @@ class GameWindow(Window):
     def check_game_over(self):
         for cell in self.board[-10:]:
             if cell != 0:
+                self.player_control = False
+                self.game_over_animation_count = 0
                 self.game_over = True
                 break
 
@@ -321,8 +339,32 @@ class GameWindow(Window):
         while not self.check_down():
             pass
 
+    def remove_full_line_animation(self):
+        # y = self.full_lines[0]
+        # for x in range(10):
+        #     self.board[x + y * 10] = 0
+        # del self.full_lines[0]
+        if self.full_line_anim_y < len(self.full_lines):
+            line_y = self.full_lines[self.full_line_anim_y]
+            self.board[self.full_line_anim_x + line_y * 10] = 0
+            self.full_line_anim_x += 1
+            if self.full_line_anim_x > 9:
+                self.full_line_anim_x = 0
+                self.full_line_anim_y += 1
+                # add score
+                self.target_score += self.full_line_score
+        else:
+            for num, line in enumerate(self.full_lines):
+                current_line = line - num
+                for y in range(current_line, 19):
+                    for x in range(10):
+                        self.board[x + y * 10] = self.board[x + (y + 1) * 10]
+            self.player_control = True
+            self.full_line_anim_x = 0
+            self.full_line_anim_y = 0
+            self.full_lines = []
+
     def check_full_lines(self, min_y, max_y):
-        full_lines = []
         for y in range(min_y, max_y+1):
             full_line = True
             for x in range(10):
@@ -330,16 +372,12 @@ class GameWindow(Window):
                     full_line = False
                     break
             if full_line:
-                full_lines.append(y)
-        full_lines.sort()
-        for num, line in enumerate(full_lines):
-            self.target_score += self.full_line_score
-            current_line = line - num
+                self.full_lines.append(y)
+        self.full_lines.sort()
+
+        for y in self.full_lines:
             for x in range(10):
-                self.board[x + current_line * 10] = 0
-            for y in range(current_line, 19):
-                for x in range(10):
-                    self.board[x + y * 10] = self.board[x + (y + 1) * 10]
+                self.board[x + y * 10] = 5  # mark grey
 
     def next_player(self):
         self.player_pos = list(self.player_start_pos)
