@@ -263,17 +263,31 @@ class GameWindow(Window):
             self.player_shape = tmp_next
 
     def check_left(self):
-        min_x = 10
+        can_move = True
         for pos in self.player_shape:
-            min_x = min(min_x, pos[0] + self.player_pos[0])
-        if min_x > 0:
+            next_x = self.player_pos[0] + pos[0] - 1
+            if next_x < 0:
+                can_move = False
+                break
+            next_y = self.player_pos[1] + pos[1]
+            if self.board[next_x + next_y * 10] != 0:
+                can_move = False
+                break
+        if can_move:
             self.player_pos[0] -= 1
 
     def check_right(self):
-        max_x = 0
+        can_move = True
         for pos in self.player_shape:
-            max_x = max(max_x, pos[0] + self.player_pos[0])
-        if max_x < 9:
+            next_x = self.player_pos[0] + pos[0] + 1
+            if next_x > 9:
+                can_move = False
+                break
+            next_y = self.player_pos[1] + pos[1]
+            if self.board[next_x + next_y * 10] != 0:
+                can_move = False
+                break
+        if can_move:
             self.player_pos[0] += 1
 
     def check_down(self):
