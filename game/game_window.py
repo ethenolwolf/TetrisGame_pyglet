@@ -83,7 +83,7 @@ class GameWindow(Window):
         self.batch = pyglet.graphics.Batch()
         self.title_label = pyglet.text.Label(text='Tetris',
                                              font_name='Monofonto',
-                                             font_size=26,
+                                             font_size=32,
                                              color=int_color(WHITE),
                                              x=self.width/2, y=self.height-20,
                                              anchor_x='center',
@@ -125,6 +125,7 @@ class GameWindow(Window):
         self.game_over = False
         self.game_over_animation_count = 0
 
+        self.high_score = 0
         self.target_score = 0
         self.score = 0
         self.basic_score = 100
@@ -132,11 +133,35 @@ class GameWindow(Window):
         self.score_add_step = 10
         self.score_label = pyglet.text.Label('Score: 0',
                                              font_name='Monofonto',
-                                             font_size=22,
+                                             font_size=20,
                                              color=int_color(WHITE),
                                              x=self.right+self.block_size*2,
                                              y=self.bottom+self.block_size*22.5,
                                              batch=self.batch)
+        self.high_score_label = pyglet.text.Label('High Score: {}'.format(self.high_score),
+                                                  font_name='Monofonto',
+                                                  font_size=20,
+                                                  color=int_color(WHITE),
+                                                  x=self.right+self.block_size*2,
+                                                  y=self.bottom+self.block_size*24,
+                                                  batch=self.batch)
+        self.show_game_over_label = False
+        self.game_over_label = pyglet.text.Label('Game Over',
+                                                 font_name='Monofonto',
+                                                 font_size=32,
+                                                 color=int_color(WHITE),
+                                                 x=self.width/2,
+                                                 y=self.height/2,
+                                                 anchor_x='center',
+                                                 anchor_y='center')
+        self.restart_label = pyglet.text.Label('press Enter to restart',
+                                               font_name='Monofonto',
+                                               font_size=20,
+                                               color=int_color(WHITE),
+                                               x=self.width/2,
+                                               y=self.height/2-32,
+                                               anchor_x='center',
+                                               anchor_y='center')
 
     def update_board_info(self, width, height):
         self.width = width
@@ -153,13 +178,19 @@ class GameWindow(Window):
         self.draw_next_shape()
         self.draw_player()
         self.batch.draw()
+        if self.show_game_over_label:
+            self.game_over_label.draw()
+            self.restart_label.draw()
         self.clock_display.draw()
 
     def update(self, delta):
         if self.score < self.target_score:
             self.score += self.score_add_step
             self.score = min(self.score, self.target_score)
-            self.score_label.text = 'Score: {}'.format(self.score)
+            self.update_score_label()
+        if self.score > self.high_score:
+            self.high_score = self.score
+            self.high_score_label.text = 'High Score: {}'.format(self.high_score)
         if self.game_over:
             self.do_game_over_animation()
             return
@@ -167,26 +198,47 @@ class GameWindow(Window):
         if self.state_time <= 0:
             self.check_down()
 
+    def update_score_label(self):
+        self.score_label.text = 'Score: {}'.format(self.score)
+
+    def restart(self):
+        self.game_over = False
+        self.show_game_over_label = False
+        self.game_over_animation_count = 0
+        if self.target_score > self.high_score:
+            self.high_score = self.target_score
+        self.target_score = 0
+        self.score = 0
+        self.update_score_label()
+        self.board = [0 for _ in range(10 * 20)]
+        self.next_shape = random.randint(0, 6)
+        self.next_color = random.randint(1, 4)
+        self.next_player()
+
     def do_game_over_animation(self):
         if self.game_over_animation_count < 10 * 20:
             for i in range(10):
                 if self.board[self.game_over_animation_count] != 0:
                     self.board[self.game_over_animation_count] = 6  # dark grey
                 self.game_over_animation_count += 1
+        else:
+            self.show_game_over_label = True
 
     def on_key_press(self, symbol, modifiers):
-        if self.game_over:
-            return
-        if symbol == key.LEFT:
-            self.check_left()
-        if symbol == key.RIGHT:
-            self.check_right()
-        if symbol == key.DOWN:
-            self.check_down()
-        if symbol == key.UP:
-            self.check_rotate()
-        if symbol == key.SPACE:
-            self.direct_down()
+        if not self.game_over:
+            if symbol == key.LEFT:
+                self.check_left()
+            if symbol == key.RIGHT:
+                self.check_right()
+            if symbol == key.DOWN:
+                self.check_down()
+            if symbol == key.UP:
+                self.check_rotate()
+            if symbol == key.SPACE:
+                self.direct_down()
+        if symbol == key.ENTER:
+            if self.game_over:
+                self.restart()
 
     def check_game_over(self):
         for cell in self.board[-10:]:
@@ -299,8 +351,8 @@ class GameWindow(Window):
             self.BLOCK_IMAGES[self.player_color].blit(x, y)
 
     def draw_next_shape(self):
-        left= self.right + self.block_size * 4
-        bottom = self.bottom + self.block_size * 20
+        left = self.right + self.block_size * 4
+        bottom = self.bottom + self.block_size * 19
         for pos in SHAPES[self.next_shape]:
             x = left + pos[0] * self.block_size
             y = bottom + pos[1] * self.block_size
