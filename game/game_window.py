@@ -130,6 +130,8 @@ class GameWindow(Window):
         self.full_line_anim_x = 0
         self.full_line_anim_y = 0
 
+        self.level = 1
+        self.points_to_next_level = 10000
         self.high_score = 0
         self.target_score = 0
         self.score = 0
@@ -167,6 +169,24 @@ class GameWindow(Window):
                                                y=self.height/2-32,
                                                anchor_x='center',
                                                anchor_y='center')
+        self.control_label = pyglet.text.Label('Left/Right/Down: move\n'
+                                               'Up: rotate\n'
+                                               'Space: anchor',
+                                               font_name='Monofonto',
+                                               font_size=16,
+                                               color=int_color(WHITE),
+                                               x=self.left-220,
+                                               y=self.top-60,
+                                               width=200,
+                                               multiline=True,
+                                               batch=self.batch)
+        self.level_label = pyglet.text.Label('Level: 1',
+                                             font_name='Monofonto',
+                                             font_size=20,
+                                             color=int_color(WHITE),
+                                             x=self.right+self.block_size*2,
+                                             y=self.bottom+self.block_size*16,
+                                             batch=self.batch)
 
     def update_board_info(self, width, height):
         self.width = width
@@ -215,11 +235,18 @@ class GameWindow(Window):
     def update_score_label(self):
         self.score_label.text = 'Score: {}'.format(self.score)
 
+    def update_level_label(self):
+        self.level_label.text = 'Level: {}'.format(self.level)
+
     def restart(self):
         self.game_over = False
         self.show_game_over_label = False
         self.player_control = True
         self.game_over_animation_count = 0
+        self.level = 1
+        self.count_down = 2
+        self.update_level_label()
+        self.points_to_next_level = 10000
         if self.target_score > self.high_score:
             self.high_score = self.target_score
         self.target_score = 0
@@ -263,6 +290,18 @@ class GameWindow(Window):
                 self.game_over_animation_count = 0
                 self.game_over = True
                 break
+
+    def add_score(self, points):
+        self.target_score += points
+        self.points_to_next_level -= points
+        if self.points_to_next_level <= 0:
+            self.next_level()
+
+    def next_level(self):
+        self.level += 1
+        self.points_to_next_level = 10000 + self.level * 1000
+        self.update_level_label()
+        self.count_down = 2.0 - min(self.level*0.1, 1.9)
 
     def check_rotate(self):
         tmp_next = []
@@ -328,7 +367,8 @@ class GameWindow(Window):
                 self.board[y * 10 + x] = self.player_color
                 min_y = min(min_y, y)
                 max_y = max(max_y, y)
-            self.target_score += self.basic_score
+            # add score
+            self.add_score(self.basic_score)
             self.check_full_lines(min_y, max_y)
             self.next_player()
         self.state_time = self.count_down
@@ -352,7 +392,7 @@ class GameWindow(Window):
                 self.full_line_anim_x = 0
                 self.full_line_anim_y += 1
                 # add score
-                self.target_score += self.full_line_score
+                self.add_score(self.full_line_score)
         else:
             for num, line in enumerate(self.full_lines):
                 current_line = line - num
