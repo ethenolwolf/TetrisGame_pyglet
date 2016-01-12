@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import random
 import pyglet
+pyglet.options['audio'] = ('openal', 'directsound', 'silent')
 from pyglet.gl import *
 from pyglet.image import ImagePattern, ImageData
 from pyglet.window import Window
@@ -180,6 +181,20 @@ class GameWindow(Window):
                                                width=200,
                                                multiline=True,
                                                batch=self.batch)
+        self.snd_control_label = pyglet.text.Label('N: toggle sound',
+                                                   font_name='Monofonto',
+                                                   font_size=16,
+                                                   color=int_color(WHITE),
+                                                   x=self.left-220,
+                                                   y=self.top-128,
+                                                   batch=self.batch)
+        self.snd_indication_label = pyglet.text.Label('Sound: Enabled',
+                                                      font_name='Monofonto',
+                                                      font_size=16,
+                                                      color=int_color(WHITE),
+                                                      x=self.left-220,
+                                                      y=self.top-148,
+                                                      batch=self.batch)
         self.level_label = pyglet.text.Label('Level: 1',
                                              font_name='Monofonto',
                                              font_size=20,
@@ -187,6 +202,11 @@ class GameWindow(Window):
                                              x=self.right+self.block_size*2,
                                              y=self.bottom+self.block_size*16,
                                              batch=self.batch)
+        self.play_sound = True
+        self.action_sound = pyglet.resource.media("action.wav", streaming=False)
+        self.anchor_sound = pyglet.resource.media("anchor.wav", streaming=False)
+        self.full_line_sound = pyglet.resource.media("full_line.wav", streaming=False)
+        self.level_up_sound = pyglet.resource.media("level_up.wav", streaming=False)
 
     def update_board_info(self, width, height):
         self.width = width
@@ -269,16 +289,30 @@ class GameWindow(Window):
     def on_key_press(self, symbol, modifiers):
         if self.player_control:
             if symbol == key.LEFT:
+                if self.play_sound:
+                    self.action_sound.play()
                 self.check_left()
             if symbol == key.RIGHT:
+                if self.play_sound:
+                    self.action_sound.play()
                 self.check_right()
             if symbol == key.DOWN:
+                if self.play_sound:
+                    self.action_sound.play()
                 self.check_down()
             if symbol == key.UP:
+                if self.play_sound:
+                    self.action_sound.play()
                 self.check_rotate()
             if symbol == key.SPACE:
                 self.direct_down()
 
+        if symbol == key.N:
+            self.play_sound = not self.play_sound
+            if self.play_sound:
+                self.snd_indication_label.text = 'Sound: Enabled'
+            else:
+                self.snd_indication_label.text = 'Sound: Disabled'
         if symbol == key.ENTER:
             if self.game_over:
                 self.restart()
@@ -302,6 +336,8 @@ class GameWindow(Window):
         self.points_to_next_level = 10000 + self.level * 1000
         self.update_level_label()
         self.count_down = 2.0 - min(self.level*0.1, 1.9)
+        if self.play_sound:
+            self.level_up_sound.play()
 
     def check_rotate(self):
         tmp_next = []
@@ -368,6 +404,8 @@ class GameWindow(Window):
                 min_y = min(min_y, y)
                 max_y = max(max_y, y)
             # add score
+            if self.play_sound:
+                self.anchor_sound.play()
             self.add_score(self.basic_score)
             self.check_full_lines(min_y, max_y)
             self.next_player()
@@ -380,10 +418,6 @@ class GameWindow(Window):
             pass
 
     def remove_full_line_animation(self):
-        # y = self.full_lines[0]
-        # for x in range(10):
-        #     self.board[x + y * 10] = 0
-        # del self.full_lines[0]
         if self.full_line_anim_y < len(self.full_lines):
             line_y = self.full_lines[self.full_line_anim_y]
             self.board[self.full_line_anim_x + line_y * 10] = 0
@@ -414,7 +448,8 @@ class GameWindow(Window):
             if full_line:
                 self.full_lines.append(y)
         self.full_lines.sort()
-
+        if self.full_lines and self.play_sound:
+            self.full_line_sound.play()
         for y in self.full_lines:
             for x in range(10):
                 self.board[x + y * 10] = 5  # mark grey
