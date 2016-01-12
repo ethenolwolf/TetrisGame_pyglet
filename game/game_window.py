@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import random
 import pyglet
-pyglet.options['audio'] = ('openal', 'directsound', 'silent')
 from pyglet.gl import *
 from pyglet.image import ImagePattern, ImageData
 from pyglet.window import Window
 from pyglet.window import key
 
+
+pyglet.options['audio'] = ('openal', 'directsound', 'silent')
 pyglet.resource.path = ['resources']
 pyglet.resource.reindex()
 pyglet.resource.add_font('MONOFONT.TTF')
